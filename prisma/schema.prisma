@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model LoyaltyPrograms {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  tier_type    String   // SPENDING_BASED, POINTS_BASED
+  benefits     Json     // {"bronze": ["5% cashback", "free shipping"], "silver": [...]}
+  requirements Json     // {"bronze": 0, "silver": 1000, "gold": 5000}
+  min_spending Decimal? @default(0) @db.Decimal(10, 2)
+  max_spending Decimal? @db.Decimal(10, 2)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // Relations
+  userLoyaltyStatuses UserLoyaltyStatus[]
+
+  @@map("loyalty_programs")
+}
+
+model UserLoyaltyStatus {
+  id                  String           @id @default(uuid())
+  user_id             String
+  program_id          String
+  current_tier        String
+  total_spending      Decimal          @default(0) @db.Decimal(10, 2)
+  tier_progress       Decimal          @default(0) @db.Decimal(10, 2)
+  tier_achieved_date  DateTime?
+  tier_expiry_date    DateTime?
+  last_updated        DateTime         @default(now())
+
+  // Relations
+  loyaltyProgram      LoyaltyPrograms  @relation(fields: [program_id], references: [id])
+  rewardHistory       RewardHistory[]
+
+  @@unique([user_id, program_id])
+  @@map("user_loyalty_status")
+}
+
+model RewardPoints {
+  id                String            @id @default(uuid())
+  user_id           String
+  points_earned     Decimal           @default(0) @db.Decimal(10, 2)
+  points_available  Decimal           @default(0) @db.Decimal(10, 2)
+  points_redeemed   Decimal           @default(0) @db.Decimal(10, 2)
+  points_expired    Decimal           @default(0) @db.Decimal(10, 2)
+  source_type       String            // PURCHASE, SIGNUP_BONUS, REFERRAL, CAMPAIGN
+  source_id         String?           // order_id, referral_id, campaign_id, etc.
+  expiry_date       DateTime?
+  created_at        DateTime          @default(now())
+
+  // Relations - No direct relation to UserLoyaltyStatus since user_id is not unique there
+  redemptions       RewardRedemptions[]
+
+  @@map("reward_points")
+}
+
+model CashbackTransactions {
+  id                  String     @id @default(uuid())
+  user_id             String
+  transaction_id      String     @unique
+  transaction_amount  Decimal    @db.Decimal(10, 2)
+  cashback_percentage Decimal    @db.Decimal(5, 2)
+  cashback_amount     Decimal    @db.Decimal(10, 2)
+  cashback_type       String     // TIER_CASHBACK, CAMPAIGN_CASHBACK, BONUS_CASHBACK
+  campaign_id         String?
+  status              String     @default("PENDING") // PENDING, COMPLETED, FAILED, CANCELLED
+  processed_at        DateTime?
+  created_at          DateTime   @default(now())
+
+  // Relations
+  campaign            Campaigns? @relation(fields: [campaign_id], references: [id])
+
+  @@map("cashback_transactions")
+}
+
+model RewardRedemptions {
+  id                 String        @id @default(uuid())
+  user_id            String
+  points_used        Decimal       @db.Decimal(10, 2)
+  redemption_type    String        // CASH_REDEMPTION, PRODUCT_REDEMPTION, DISCOUNT_REDEMPTION
+  redemption_details Json?         // {"product_id": "123", "discount_code": "ABC", "amount": 50}
+  cash_value         Decimal       @db.Decimal(10, 2)
+  status             String        @default("PENDING") // PENDING, COMPLETED, FAILED, CANCELLED
+  processed_at       DateTime?
+  created_at         DateTime      @default(now())
+
+  // Relations - Reference a specific RewardPoints record
+  reward_points_id   String?
+  rewardPoints       RewardPoints? @relation(fields: [reward_points_id], references: [id])
+
+  @@map("reward_redemptions")
+}
+
+model Campaigns {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  campaign_type   String   // CASHBACK_BOOST, POINTS_MULTIPLIER, SIGNUP_BONUS, REFERRAL_BONUS
+  rules           Json     // {"category": "electronics", "multiplier": 2.0, "max_per_user": 100}
+  rewards         Json     // {"cashback_rate": 0.10, "points_multiplier": 2.0}
+  start_date      DateTime
+  end_date        DateTime
+  min_transaction Decimal? @db.Decimal(10, 2)
+  max_cashback    Decimal? @db.Decimal(10, 2)
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  // Relations
+  cashbackTransactions CashbackTransactions[]
+  userCampaigns        UserCampaigns[]
+
+  @@map("campaigns")
+}
+
+model UserCampaigns {
+  id           String    @id @default(uuid())
+  user_id      String
+  campaign_id  String
+  total_earned Decimal   @default(0) @db.Decimal(10, 2)
+  usage_count  Int       @default(0)
+  last_used    DateTime?
+  enrolled_at  DateTime  @default(now())
+
+  // Relations
+  campaign     Campaigns @relation(fields: [campaign_id], references: [id])
+
+  @@unique([user_id, campaign_id], name: "user_id_campaign_id")
+  @@map("user_campaigns")
+}
+
+model RewardHistory {
+  id              String            @id @default(uuid())
+  user_id         String
+  action_type     String            // POINTS_EARNED, POINTS_REDEEMED, CASHBACK_EARNED, TIER_UPGRADE, POINTS_EXPIRED
+  points_change   Decimal           @default(0) @db.Decimal(10, 2)
+  cashback_change Decimal           @default(0) @db.Decimal(10, 2)
+  description     String
+  metadata        Json?             // Additional context data
+  created_at      DateTime          @default(now())
+
+  // Relations - Reference the UserLoyaltyStatus record
+  user_loyalty_status_id String?
+  userLoyaltyStatus      UserLoyaltyStatus? @relation(fields: [user_loyalty_status_id], references: [id])
+
+  @@map("reward_history")
+}

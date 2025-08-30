@@ -1,0 +1,30 @@
+{
+  "name": "ctms-cashbackrewardservice",
+  "version": "1.0.0",
+  "description": "- **Loyalty Program Management**: Create and manage different loyalty tiers and programs\r - **Cashback Calculations**: Calculate cashback based on spending patterns and rules\r - **Reward Point Tracking**: Track and manage reward points accumulation\r - **Redemption Management**: Handle reward redemptions and validations\r - **Promotional Campaigns**: Manage special offers and bonus rewards\r - **Analytics & Reporting**: Generate insights on reward utilization",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pragyan14/CTMS-CashbackRewardService.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Pragyan14/CTMS-CashbackRewardService/issues"
+  },
+  "homepage": "https://github.com/Pragyan14/CTMS-CashbackRewardService#readme",
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prisma": "^6.13.0"
+  }
+}
