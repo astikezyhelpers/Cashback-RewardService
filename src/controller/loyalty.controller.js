@@ -204,11 +204,11 @@ const upgradeLoyaltyTier = asyncHandler(async (req,res) => {
             };
         });
 
-        return res.status(200).json(new ApiResponse(400, result));
+        return res.status(200).json(new ApiResponse(200, result));
 
     } catch (error) {
         console.error('Tier upgrade error:', error);
-        return res.status(500).json({ error: error.message || 'Internal server error' });
+        throw new ApiError(500, "Internal server error in upgradeLoyaltyTire", error.message)
     }
 })
 
